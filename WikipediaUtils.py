@@ -1,6 +1,13 @@
+import os
+import sys
+import json
+import copy
+from pyMorfologik import Morfologik
+from pyMorfologik.parsing import ListParser
+
 class PrepareWikipedia(object):
     
-    def __init__(self, path="./Desktop/SGH - magisterka/magisterka_60673/wikipedia/",
+    def __init__(self, path="/home/kuba/Desktop/SGH - magisterka/magisterka_60673/wikipedia",
                  word=["ur."]):
         self.path = path
         self.word = word
@@ -15,11 +22,11 @@ class PrepareWikipedia(object):
         '''
         all_articles = []
         
-        path = os.path.join(self.path, "wikiextractor/text/")
+        path_art = os.path.join(self.path, "wikiextractor/text/")
         
-        n_folders = len(os.listdir(path)); i=0
+        n_folders = len(os.listdir(path_art)); i=0
         
-        for dirname, dirnames, filenames in os.walk(path):
+        for dirname, dirnames, filenames in os.walk(path_art):
             sys.stdout.write(f"\r Extracting... {str(round(100*i/n_folders,1))+'%'}")
             sys.stdout.flush()
             i += 1
@@ -38,7 +45,7 @@ class PrepareWikipedia(object):
                         indexes.append(idx)
                 # adding all found articles from batch
                 all_articles.extend([batch[i] for i in indexes])
-        return(all_articles)
+        return all_articles
     
 
     def get_stop_words(self):
@@ -49,13 +56,14 @@ class PrepareWikipedia(object):
         stop_words.extend(['ur', 'zm']) # adding more words to list
         return stop_words
     
-    
+
     def remove_stop_words(self, articles):
         # lowercasing and removing stop words
+        articles = copy.deepcopy(articles)
         n_art = len(articles)
-        
+        print(n_art)
         stop_words = self.get_stop_words()
-        trans = str.maketrans({'.':'', '”':'', '„':'', ',':'', '-':' ', '–':' ',
+        trans = str.maketrans({'.':'', '”':'', '„':'', ',':'', '-':'', '–':'',
                                '(':'', ')':'', '"':''})
         
         for idx, art in enumerate(articles):
@@ -66,10 +74,9 @@ class PrepareWikipedia(object):
             
             art['text'] = art['text'].translate(trans).replace("\n\n", " ")
             
-            articles[idx]['text'] = ' '.join([x.lower() for x in \
-                    art['text'].split(" ") if x.lower() not in stop_words])
+            articles[idx]['text'] = ' '.join([x.lower() for x in art['text'].split(" ") if x.lower() not in stop_words])
         
-        return(articles)
+        return articles
     
     
     def stem_articles(self, articles):
@@ -91,12 +98,14 @@ class PrepareWikipedia(object):
             tmp = []
             for wyraz in range(len(bum)):
                 if len(bum[wyraz][1])>0:
+                    # take only first word:
                     lem = list(bum[wyraz][1].keys())[0]
                 else:
                     lem = bum[wyraz][0]
                 tmp.append(lem)
             final = ' '.join(tmp).split(' BECARZYK ')
             # overwriting stemmed text
+            print("Batch size: 1000, final size:{} \n".format(len(final)))
             for j in range(len(final)):
                 articles[batch*1000+j]['text'] = final[j]
     
@@ -110,16 +119,15 @@ class PrepareWikipedia(object):
         final = []
         for idx, art in enumerate(json_list):
             final.append(art['text'])
-        return(final)
+        return final
     
     
-    def save_articles(self, obj,
-                      save_path="./Desktop/SGH - magisterka/magisterka_60673/bio"):
-        with open(save_path, 'w') as fout:
+    def save_articles(self, obj, file_name):
+        with open(os.path.join(self.path, file_name), 'w') as fout:
             json.dump(obj, fout)
     
     
     def load_articles(self, load_path):
-        with open(load_path) as plik:
+        with open(os.path.join(self.path, load_path)) as plik:
             articles = json.load(plik)
         return articles
